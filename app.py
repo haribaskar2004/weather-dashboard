@@ -356,6 +356,77 @@ def apply_theme(theme):
     )
 
 
+import base64
+from pathlib import Path
+
+
+@st.cache_data
+def load_background():
+    folder = Path(__file__).parent
+    options = [
+        ("forest.mp4", "video/mp4"),
+        ("forest.jpg", "image/jpeg"),
+        ("forest.jpeg", "image/jpeg"),
+        ("forest.png", "image/png"),
+        ("forest.webp", "image/webp"),
+    ]
+    for name, mime in options:
+        path = folder / name
+        if path.exists():
+            return mime, base64.b64encode(path.read_bytes()).decode()
+    return None, None
+
+
+REAL_CSS = """
+.stApp { background: #06100b; }
+.bgwrap { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+      filter: brightness(0.62) contrast(1.08) saturate(1.1); }
+img.bg, div.bg { animation: slowzoom 45s ease-in-out infinite alternate; }
+@keyframes slowzoom { from { transform: scale(1.0); } to { transform: scale(1.1); } }
+.shade { position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,12,6,0.55), rgba(0,12,6,0.10) 40%, rgba(0,12,6,0.65)); }
+.vignette { position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.75) 100%); }
+.mist { position: absolute; left: 0; bottom: 0; width: 220%; height: 40%;
+  background: linear-gradient(to top, rgba(205,230,220,0.22), rgba(205,230,220,0));
+  animation: mistmove 50s linear infinite alternate; }
+@keyframes mistmove { from { transform: translateX(-45%); } to { transform: translateX(0); } }
+.rain { position: absolute; top: -120px; width: 1px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(215,230,245,0.55));
+  animation: realrain linear infinite; }
+@keyframes realrain {
+  from { transform: translate3d(0, 0, 0) rotate(9deg); }
+  to   { transform: translate3d(-14vh, 120vh, 0) rotate(9deg); }
+}
+.glass { background: rgba(0, 0, 0, 0.38) !important; border-color: rgba(255,255,255,0.18) !important; }
+"""
+
+
+def apply_theme(theme):
+    random.seed(5)
+    mime, data = load_background()
+    if data is None:
+        media = ""
+        st.info("Add a photo named forest.jpg to the weather-dashboard folder for the realistic background.")
+    elif mime == "video/mp4":
+        media = (f'<video class="bg" autoplay muted loop playsinline '
+                 f'src="data:video/mp4;base64,{data}"></video>')
+    else:
+        media = f'<div class="bg" style="background:url(data:{mime};base64,{data}) center/cover no-repeat;"></div>'
+
+    drops = ""
+    for _ in range(170):
+        h = random.randint(40, 110)
+        blur = random.choice([0, 0, 0.6, 1.2])
+        drops += (f'<div class="rain" style="left:{random.randint(0, 115)}%;height:{h}px;'
+                  f'opacity:{round(random.uniform(0.25, 0.7), 2)};filter:blur({blur}px);'
+                  f'animation-delay:-{round(random.uniform(0, 2), 2)}s;'
+                  f'animation-duration:{round(random.uniform(0.55, 1.0), 2)}s;"></div>')
+
+    scene = (f'<div class="bgwrap">{media}<div class="shade"></div>'
+             f'<div class="mist"></div>{drops}<div class="vignette"></div></div>')
+    st.markdown(BASE_CSS + "<style>" + REAL_CSS + "</style>" + scene, unsafe_allow_html=True)
 def show_stats(items):
     for col, (label, value, sub) in zip(st.columns(len(items)), items):
         col.markdown(
