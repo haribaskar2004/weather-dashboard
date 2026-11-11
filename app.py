@@ -80,6 +80,23 @@ def get_tip(code, temp_c, uv, rain_chance):
     return " ".join(tips)
 
 
+def get_alerts(code, now, uv, rain_chance, air):
+    alerts = []
+    if code in (95, 96, 99):
+        alerts.append(("⛈️", "Thunderstorm warning", "Avoid open areas and tall trees."))
+    if now["temperature_2m"] >= 38 or now["apparent_temperature"] >= 41:
+        alerts.append(("🔥", "Extreme heat", "Stay hydrated and avoid going out at noon."))
+    if rain_chance >= 70:
+        alerts.append(("🌧️", "Heavy rain likely", "Carry an umbrella and watch for waterlogging."))
+    if uv >= 8:
+        alerts.append(("🕶️", "Very strong UV", "Use sunscreen and cover up outdoors."))
+    if now["wind_speed_10m"] >= 40:
+        alerts.append(("💨", "Strong winds", "Secure loose items outside."))
+    if air and air.get("us_aqi") is not None and air["us_aqi"] > 150:
+        alerts.append(("🌫️", "Poor air quality", "Limit outdoor activity and consider a mask."))
+    return alerts
+
+
 def convert(temp_c, unit):
     if unit == "°F":
         return round(temp_c * 9 / 5 + 32)
@@ -185,6 +202,21 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
   transform: scale(1.05);
 }
 
+/* ---------- Quick city buttons ---------- */
+[data-testid="stButton"] button {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50px;
+  backdrop-filter: blur(14px);
+  transition: all 0.3s ease;
+}
+[data-testid="stButton"] button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: #ffffff;
+  transform: translateY(-2px);
+}
+
 /* ---------- Card entrance and hover ---------- */
 .glass { animation: fadeUp 0.7s ease both; transition: transform 0.3s ease, box-shadow 0.3s ease; }
 .glass:hover { transform: translateY(-6px); box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3); }
@@ -196,8 +228,6 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
 """
 
 # ---------- 3D deep forest ----------
-# Each layer is one depth level: far layers are small, hazy and slow,
-# near layers are big, dark, blurred and fast. This creates the 3D parallax feel.
 FOREST_LAYERS = [
     dict(kind="pine", n=30, h=(34, 50), color="#5b9a7e", blur=3.0, op=0.55, amp=0.4, dur=24),
     dict(kind="pine", n=24, h=(44, 62), color="#357a5a", blur=2.0, op=0.70, amp=0.8, dur=20),
@@ -408,17 +438,28 @@ NEWS_TOPICS = {
 }
 
 
+def pick_city(name):
+    st.session_state.city = name
+
+
 # ---------- Page ----------
 apply_theme("forest")
 st.markdown('<div class="title">🌦️ Weather Dashboard</div>', unsafe_allow_html=True)
 
+if "city" not in st.session_state:
+    st.session_state.city = "Coimbatore"
+
 left, right = st.columns([4, 1])
 city = left.text_input(
-    "City", "Coimbatore", placeholder="🔍 Search for a city...", label_visibility="collapsed"
+    "City", key="city", placeholder="🔍 Search for a city...", label_visibility="collapsed"
 )
 unit = right.segmented_control(
     "Unit", ["°C", "°F"], default="°C", label_visibility="collapsed"
 ) or "°C"
+
+quick_cities = ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Ooty"]
+for col, name in zip(st.columns(len(quick_cities)), quick_cities):
+    col.button(name, on_click=pick_city, args=(name,), use_container_width=True)
 
 place = get_location(city)
 if place is None:
@@ -456,6 +497,13 @@ st.markdown(
 
 tip = get_tip(code, now["temperature_2m"], uv, rain_chance)
 st.markdown(f'<div class="glass tip">💡 {tip}</div>', unsafe_allow_html=True)
+
+for icon, title, message in get_alerts(code, now, uv, rain_chance, air):
+    st.markdown(
+        f'<div class="glass" style="text-align:left; border-left:6px solid #ffb703;">'
+        f'<b>{icon} {title}</b><br>{message}</div>',
+        unsafe_allow_html=True,
+    )
 
 show_stats([
     ("🌡️ Feels like", f'{convert(now["apparent_temperature"], unit)}{unit}', "How it feels outside"),
