@@ -1,5 +1,59 @@
+import random
 import streamlit as st
 import requests
+
+
+def add_rain_background(drops=120):
+    random.seed(1)  # keeps the raindrops in the same places on every refresh
+    drop_html = ""
+    for _ in range(drops):
+        left = random.randint(0, 100)
+        delay = round(random.uniform(0, 2), 2)
+        duration = round(random.uniform(0.5, 1.2), 2)
+        drop_html += (
+            f'<div class="drop" style="left:{left}%; '
+            f'animation-delay:{delay}s; animation-duration:{duration}s;"></div>'
+        )
+
+    css = """
+    <style>
+    .stApp {
+        background: linear-gradient(to bottom, #1b2430, #3b4d61);
+    }
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+    h1, h2, h3, p, label, [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+        color: #e8f0f7 !important;
+    }
+    .rain {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 0;
+    }
+    .drop {
+        position: absolute;
+        top: -80px;
+        width: 2px;
+        height: 60px;
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(174,194,224,0.8));
+        animation: fall linear infinite;
+    }
+    @keyframes fall {
+        to { transform: translateY(115vh); }
+    }
+    .block-container {
+        position: relative;
+        z-index: 1;
+    }
+    </style>
+    """
+    st.markdown(css + f'<div class="rain">{drop_html}</div>', unsafe_allow_html=True)
 
 
 def get_location(city):
@@ -36,7 +90,9 @@ def convert(temp_c, unit):
     return temp_c
 
 
-st.title("🌤️ Weather Dashboard")
+add_rain_background()
+
+st.title("🌧️ Weather Dashboard")
 city = st.text_input("Enter a city", "Coimbatore")
 unit = st.radio("Temperature unit", ["°C", "°F"], horizontal=True)
 
