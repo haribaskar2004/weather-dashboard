@@ -1,5 +1,8 @@
+import html
 import random
+import xml.etree.ElementTree as ET
 from datetime import datetime
+from urllib.parse import quote
 
 import requests
 import streamlit as st
@@ -241,38 +244,38 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
 
 def make_effects(theme):
     random.seed(7)
-    html = ""
+    fx = ""
     if theme in ("rain", "storm"):
         for _ in range(220 if theme == "storm" else 130):
-            html += (f'<div class="drop" style="left:{random.randint(0, 100)}%;'
-                     f'animation-delay:{round(random.uniform(0, 2), 2)}s;'
-                     f'animation-duration:{round(random.uniform(0.5, 1.1), 2)}s;"></div>')
+            fx += (f'<div class="drop" style="left:{random.randint(0, 100)}%;'
+                   f'animation-delay:{round(random.uniform(0, 2), 2)}s;'
+                   f'animation-duration:{round(random.uniform(0.5, 1.1), 2)}s;"></div>')
     if theme == "storm":
-        html += '<div class="flash"></div>'
+        fx += '<div class="flash"></div>'
     if theme == "snow":
         for _ in range(90):
             size = random.randint(3, 8)
-            html += (f'<div class="flake" style="left:{random.randint(0, 100)}%;'
-                     f'width:{size}px;height:{size}px;'
-                     f'animation-delay:{round(random.uniform(0, 6), 2)}s;'
-                     f'animation-duration:{round(random.uniform(5, 10), 2)}s;"></div>')
+            fx += (f'<div class="flake" style="left:{random.randint(0, 100)}%;'
+                   f'width:{size}px;height:{size}px;'
+                   f'animation-delay:{round(random.uniform(0, 6), 2)}s;'
+                   f'animation-duration:{round(random.uniform(5, 10), 2)}s;"></div>')
     if theme in ("cloudy", "clear", "rain", "storm", "fog"):
         count = 6 if theme in ("cloudy", "fog") else 3
         for _ in range(count):
-            html += (f'<div class="cloud" style="top:{random.randint(2, 55)}%;'
-                     f'width:{random.randint(220, 420)}px;height:{random.randint(60, 110)}px;'
-                     f'animation-duration:{random.randint(45, 90)}s;'
-                     f'animation-delay:-{random.randint(0, 60)}s;"></div>')
+            fx += (f'<div class="cloud" style="top:{random.randint(2, 55)}%;'
+                   f'width:{random.randint(220, 420)}px;height:{random.randint(60, 110)}px;'
+                   f'animation-duration:{random.randint(45, 90)}s;'
+                   f'animation-delay:-{random.randint(0, 60)}s;"></div>')
     if theme == "clear":
-        html += '<div class="sun"></div>'
+        fx += '<div class="sun"></div>'
     if theme == "night":
-        html += '<div class="moon"></div>'
+        fx += '<div class="moon"></div>'
         for _ in range(70):
             size = random.randint(1, 3)
-            html += (f'<div class="star" style="left:{random.randint(0, 100)}%;'
-                     f'top:{random.randint(0, 80)}%;width:{size}px;height:{size}px;'
-                     f'animation-delay:{round(random.uniform(0, 3), 2)}s;"></div>')
-    return f'<div class="fx">{html}</div>'
+            fx += (f'<div class="star" style="left:{random.randint(0, 100)}%;'
+                   f'top:{random.randint(0, 80)}%;width:{size}px;height:{size}px;'
+                   f'animation-delay:{round(random.uniform(0, 3), 2)}s;"></div>')
+    return f'<div class="fx">{fx}</div>'
 
 
 def apply_theme(theme):
@@ -329,6 +332,37 @@ def get_air_quality(lat, lon):
         return requests.get(url, params=params, timeout=10).json().get("current")
     except Exception:
         return None
+
+
+@st.cache_data(ttl=1800)
+def get_news(query, limit=8):
+    url = (
+        "https://news.google.com/rss/search?q=" + quote(query)
+        + "&hl=en-IN&gl=IN&ceid=IN:en"
+    )
+    try:
+        response = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        root = ET.fromstring(response.content)
+    except Exception:
+        return []
+    items = []
+    for item in root.iter("item"):
+        items.append({
+            "title": item.findtext("title", ""),
+            "link": item.findtext("link", ""),
+            "date": item.findtext("pubDate", "")[:16],
+        })
+        if len(items) >= limit:
+            break
+    return items
+
+
+NEWS_TOPICS = {
+    "🌍 Climate change": "Tamil Nadu climate change",
+    "🌧️ Rain and floods": "Tamil Nadu rain flood",
+    "🔥 Heatwave": "Tamil Nadu heatwave temperature",
+    "🌀 Cyclone": "Tamil Nadu cyclone",
+}
 
 
 # ---------- Page ----------
@@ -444,5 +478,25 @@ with tab2:
         f"Max ({unit})": [convert(t, unit) for t in daily["temperature_2m_max"]],
         f"Min ({unit})": [convert(t, unit) for t in daily["temperature_2m_min"]],
     })
+
+# ---------- Tamil Nadu climate news ----------
+st.markdown('<div class="section">📰 Tamil Nadu Climate News</div>', unsafe_allow_html=True)
+topic = st.selectbox("News topic", list(NEWS_TOPICS), label_visibility="collapsed")
+news = get_news(NEWS_TOPICS[topic])
+
+if not news:
+    st.info("Could not load news right now. Check your internet and try again.")
+else:
+    for n in news:
+        st.markdown(
+            f'<div class="glass" style="text-align:left; padding:14px 18px;">'
+            f'<a href="{html.escape(n["link"])}" target="_blank" '
+            f'style="color:#ffffff; font-weight:600; text-decoration:none;">'
+            f'{html.escape(n["title"])}</a>'
+            f'<div style="font-size:0.8rem; opacity:0.75; margin-top:4px;">🕒 {n["date"]}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    st.caption("Headlines from Google News. Click a headline to read the full story.")
 
 st.caption("Data from Open-Meteo.com")
