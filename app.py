@@ -24,36 +24,12 @@ WEATHER_CODES = {
 }
 RAIN_CODES = (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82)
 
-GRADIENTS = {
-    "clear": "linear-gradient(to bottom, #2b86e8, #7cc4ff)",
-    "night": "linear-gradient(to bottom, #0b1026, #1d2b53)",
-    "cloudy": "linear-gradient(to bottom, #56637a, #8796ad)",
-    "rain": "linear-gradient(to bottom, #1b2430, #3b4d61)",
-    "storm": "linear-gradient(to bottom, #0c1015, #2a3340)",
-    "snow": "linear-gradient(to bottom, #5c7a9e, #a9bdd6)",
-    "fog": "linear-gradient(to bottom, #6b7487, #aab3c2)",
-}
-
 
 def describe(code, is_day):
     text, emoji = WEATHER_CODES.get(code, ("Unknown", "🌡️"))
     if code == 0 and not is_day:
         return "Clear night", "🌙"
     return text, emoji
-
-
-def get_theme(code, is_day):
-    if code in (95, 96, 99):
-        return "storm"
-    if code in RAIN_CODES:
-        return "rain"
-    if code in (71, 73, 75, 77, 85, 86):
-        return "snow"
-    if code in (45, 48):
-        return "fog"
-    if code in (2, 3):
-        return "cloudy"
-    return "clear" if is_day else "night"
 
 
 def compass(degrees):
@@ -158,24 +134,6 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
         background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(174,194,224,0.8));
         animation: fall linear infinite; }
 @keyframes fall { to { transform: translateY(115vh); } }
-.flake { position: absolute; top: -10px; background: white; border-radius: 50%;
-         opacity: 0.85; animation: snowfall linear infinite; }
-@keyframes snowfall { to { transform: translateY(110vh) translateX(50px); } }
-.cloud { position: absolute; background: rgba(255,255,255,0.28); border-radius: 100px;
-         filter: blur(18px); animation: drift linear infinite; }
-@keyframes drift { from { transform: translateX(-45vw); } to { transform: translateX(145vw); } }
-.sun { position: absolute; top: 70px; right: 12%; width: 130px; height: 130px; border-radius: 50%;
-       background: radial-gradient(circle, #fffbd0 0%, #ffd54f 55%, rgba(255,213,79,0) 72%);
-       animation: pulse 4s ease-in-out infinite; }
-@keyframes pulse { 0%,100% { transform: scale(1); opacity: 0.95; } 50% { transform: scale(1.12); opacity: 1; } }
-.moon { position: absolute; top: 80px; right: 12%; width: 80px; height: 80px; border-radius: 50%;
-        background: #f5f3ce; box-shadow: 0 0 50px rgba(245,243,206,0.6); }
-.star { position: absolute; background: white; border-radius: 50%; animation: twinkle 3s ease-in-out infinite; }
-@keyframes twinkle { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
-.flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white;
-         opacity: 0; animation: flash 7s infinite; }
-@keyframes flash { 0%,90%,100% { opacity: 0; } 91% { opacity: 0.55; } 92% { opacity: 0; }
-                   94% { opacity: 0.8; } 96% { opacity: 0; } }
 
 /* ---------- Search box (purple) ---------- */
 [data-baseweb="input"], [data-baseweb="base-input"] {
@@ -242,45 +200,65 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
 """
 
 
-def make_effects(theme):
-    random.seed(7)
-    fx = ""
-    if theme in ("rain", "storm"):
-        for _ in range(220 if theme == "storm" else 130):
-            fx += (f'<div class="drop" style="left:{random.randint(0, 100)}%;'
-                   f'animation-delay:{round(random.uniform(0, 2), 2)}s;'
-                   f'animation-duration:{round(random.uniform(0.5, 1.1), 2)}s;"></div>')
-    if theme == "storm":
-        fx += '<div class="flash"></div>'
-    if theme == "snow":
-        for _ in range(90):
-            size = random.randint(3, 8)
-            fx += (f'<div class="flake" style="left:{random.randint(0, 100)}%;'
-                   f'width:{size}px;height:{size}px;'
-                   f'animation-delay:{round(random.uniform(0, 6), 2)}s;'
-                   f'animation-duration:{round(random.uniform(5, 10), 2)}s;"></div>')
-    if theme in ("cloudy", "clear", "rain", "storm", "fog"):
-        count = 6 if theme in ("cloudy", "fog") else 3
+def forest_scene():
+    random.seed(11)
+    layers = [
+        ("#14502f", 22, 220, 330, 0.55),
+        ("#0b3a22", 18, 280, 420, 0.80),
+        ("#04200f", 14, 340, 520, 1.00),
+    ]
+    scene = ""
+    for color, count, h_min, h_max, opacity in layers:
         for _ in range(count):
-            fx += (f'<div class="cloud" style="top:{random.randint(2, 55)}%;'
-                   f'width:{random.randint(220, 420)}px;height:{random.randint(60, 110)}px;'
-                   f'animation-duration:{random.randint(45, 90)}s;'
-                   f'animation-delay:-{random.randint(0, 60)}s;"></div>')
-    if theme == "clear":
-        fx += '<div class="sun"></div>'
-    if theme == "night":
-        fx += '<div class="moon"></div>'
-        for _ in range(70):
-            size = random.randint(1, 3)
-            fx += (f'<div class="star" style="left:{random.randint(0, 100)}%;'
-                   f'top:{random.randint(0, 80)}%;width:{size}px;height:{size}px;'
-                   f'animation-delay:{round(random.uniform(0, 3), 2)}s;"></div>')
-    return f'<div class="fx">{fx}</div>'
+            h = random.randint(h_min, h_max)
+            w = int(h * random.uniform(0.38, 0.5))
+            left = random.randint(-3, 100)
+            scene += (f'<div class="tree" style="left:{left}%;width:{w}px;height:{h}px;'
+                      f'background:{color};opacity:{opacity};"></div>')
+    scene += '<div class="mist"></div>'
+    for _ in range(25):
+        scene += (f'<div class="firefly" style="left:{random.randint(2, 98)}%;'
+                  f'top:{random.randint(45, 92)}%;'
+                  f'animation-delay:{round(random.uniform(0, 6), 2)}s;'
+                  f'animation-duration:{round(random.uniform(4, 8), 2)}s;"></div>')
+    for _ in range(200):
+        scene += (f'<div class="drop" style="left:{random.randint(0, 100)}%;'
+                  f'animation-delay:{round(random.uniform(0, 2), 2)}s;'
+                  f'animation-duration:{round(random.uniform(0.5, 1.0), 2)}s;"></div>')
+    return f'<div class="fx">{scene}</div>'
+
+
+FOREST_CSS = """
+<style>
+.stApp { background: linear-gradient(to bottom, #020a06 0%, #06180e 45%, #0d3320 100%); }
+.tree {
+  position: absolute; bottom: -10px;
+  clip-path: polygon(50% 0%, 68% 28%, 58% 28%, 78% 55%, 64% 55%, 90% 85%,
+                     54% 85%, 54% 100%, 46% 100%, 46% 85%, 10% 85%, 36% 55%,
+                     22% 55%, 42% 28%, 32% 28%);
+}
+.mist {
+  position: absolute; bottom: 0; left: 0; width: 200%; height: 38%;
+  background: linear-gradient(to top, rgba(180, 225, 200, 0.22), rgba(180, 225, 200, 0));
+  animation: mistmove 40s linear infinite alternate;
+}
+@keyframes mistmove { from { transform: translateX(-25%); } to { transform: translateX(0); } }
+.firefly {
+  position: absolute; width: 5px; height: 5px; border-radius: 50%;
+  background: #d9ff7a; box-shadow: 0 0 10px 3px rgba(217, 255, 122, 0.8);
+  animation: fly ease-in-out infinite;
+}
+@keyframes fly {
+  0%, 100% { opacity: 0.1; transform: translate(0, 0); }
+  50%      { opacity: 1;   transform: translate(25px, -30px); }
+}
+.glass { background: rgba(0, 25, 12, 0.38) !important; }
+</style>
+"""
 
 
 def apply_theme(theme):
-    gradient_css = f"<style>.stApp {{ background: {GRADIENTS[theme]}; }}</style>"
-    st.markdown(BASE_CSS + gradient_css + make_effects(theme), unsafe_allow_html=True)
+    st.markdown(BASE_CSS + FOREST_CSS + forest_scene(), unsafe_allow_html=True)
 
 
 def show_stats(items):
@@ -378,7 +356,7 @@ unit = right.segmented_control(
 
 place = get_location(city)
 if place is None:
-    apply_theme("cloudy")
+    apply_theme("forest")
     st.error("City not found. Check the spelling.")
     st.stop()
 
@@ -391,7 +369,7 @@ daily = weather["daily"]
 is_day = now["is_day"] == 1
 code = now["weather_code"]
 desc, emoji = describe(code, is_day)
-apply_theme(get_theme(code, is_day))
+apply_theme("forest")
 
 try:
     start = hourly["time"].index(now["time"][:13] + ":00")
