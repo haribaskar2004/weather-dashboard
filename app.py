@@ -95,8 +95,10 @@ html, body, [class*="css"], .stApp { font-family: 'Poppins', sans-serif; }
 .block-container { position: relative; z-index: 1; padding-top: 2rem; }
 h1, h2, h3, p, label, span, div[data-testid="stMarkdownContainer"] { color: #ffffff; }
 button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
-.title { text-align: center; font-size: 2.6rem; font-weight: 700; margin-bottom: 1rem; color: #fff; }
-.section { font-size: 1.3rem; font-weight: 600; margin: 1.5rem 0 0.5rem 0; color: #fff; }
+.title { text-align: center; font-size: 2.6rem; font-weight: 700; margin-bottom: 1rem; color: #fff;
+         text-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+.section { font-size: 1.3rem; font-weight: 600; margin: 1.5rem 0 0.5rem 0; color: #fff;
+           text-shadow: 0 2px 12px rgba(0,0,0,0.6); }
 .glass {
   background: rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(14px);
@@ -128,12 +130,6 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
 .hour .emoji { font-size: 1.7rem; margin: 4px 0; }
 .hour .t { font-weight: 600; }
 .hour .rain { font-size: 0.75rem; opacity: 0.8; }
-.fx { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none; overflow: hidden; z-index: 0; }
-.drop { position: absolute; top: -80px; width: 2px; height: 60px;
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(174,194,224,0.8));
-        animation: fall linear infinite; }
-@keyframes fall { to { transform: translateY(115vh); } }
 
 /* ---------- Search box (purple) ---------- */
 [data-baseweb="input"], [data-baseweb="base-input"] {
@@ -199,66 +195,135 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
 </style>
 """
 
+# ---------- 3D deep forest ----------
+# Each layer is one depth level: far layers are small, hazy and slow,
+# near layers are big, dark, blurred and fast. This creates the 3D parallax feel.
+FOREST_LAYERS = [
+    dict(kind="pine", n=30, h=(34, 50), color="#5b9a7e", blur=3.0, op=0.55, amp=0.4, dur=24),
+    dict(kind="pine", n=24, h=(44, 62), color="#357a5a", blur=2.0, op=0.70, amp=0.8, dur=20),
+    dict(kind="pine", n=18, h=(58, 80), color="#1b5236", blur=1.0, op=0.88, amp=1.4, dur=17),
+    dict(kind="trunk", n=8, w=(2.0, 3.4), blur=1.5, op=0.95, amp=2.2, dur=14),
+    dict(kind="trunk", n=5, w=(4.0, 6.5), blur=5.0, op=1.00, amp=3.6, dur=12),
+]
+
 
 def forest_scene():
-    random.seed(11)
-    layers = [
-        ("#14502f", 22, 220, 330, 0.55),
-        ("#0b3a22", 18, 280, 420, 0.80),
-        ("#04200f", 14, 340, 520, 1.00),
-    ]
+    random.seed(21)
+    css = ""
     scene = ""
-    for color, count, h_min, h_max, opacity in layers:
-        for _ in range(count):
-            h = random.randint(h_min, h_max)
-            w = int(h * random.uniform(0.38, 0.5))
-            left = random.randint(-3, 100)
-            scene += (f'<div class="tree" style="left:{left}%;width:{w}px;height:{h}px;'
-                      f'background:{color};opacity:{opacity};"></div>')
-    scene += '<div class="mist"></div>'
-    for _ in range(25):
-        scene += (f'<div class="firefly" style="left:{random.randint(2, 98)}%;'
-                  f'top:{random.randint(45, 92)}%;'
-                  f'animation-delay:{round(random.uniform(0, 6), 2)}s;'
-                  f'animation-duration:{round(random.uniform(4, 8), 2)}s;"></div>')
-    for _ in range(200):
-        scene += (f'<div class="drop" style="left:{random.randint(0, 100)}%;'
-                  f'animation-delay:{round(random.uniform(0, 2), 2)}s;'
-                  f'animation-duration:{round(random.uniform(0.5, 1.0), 2)}s;"></div>')
-    return f'<div class="fx">{scene}</div>'
+
+    for i, L in enumerate(FOREST_LAYERS):
+        css += (
+            f"@keyframes sway{i}{{from{{transform:translateX(-{L['amp']}vw)}}"
+            f"to{{transform:translateX({L['amp']}vw)}}}}"
+            f".L{i}{{position:absolute;left:-6%;width:112%;top:0;height:100%;"
+            f"filter:blur({L['blur']}px);opacity:{L['op']};"
+            f"animation:sway{i} {L['dur']}s ease-in-out infinite alternate;}}"
+        )
+        trees = ""
+        for _ in range(L["n"]):
+            left = random.uniform(-2, 100)
+            if L["kind"] == "pine":
+                h = round(random.uniform(*L["h"]), 1)
+                w = round(h * random.uniform(0.40, 0.52), 1)
+                trees += (
+                    f'<div class="pine" style="left:{left:.1f}%;width:{w}vh;height:{h}vh;'
+                    f'--c:{L["color"]};"></div>'
+                )
+            else:
+                w = round(random.uniform(*L["w"]), 1)
+                tone = random.choice(["t1", "t2", "t3"])
+                trees += f'<div class="trunk {tone}" style="left:{left:.1f}%;width:{w}vh;"></div>'
+        scene += f'<div class="L{i}">{trees}</div>'
+        if i == 1:
+            scene += '<div class="fog f1"></div>'
+        if i == 2:
+            scene += '<div class="fog f2"></div>'
+
+    scene += '<div class="canopy"></div>'
+    for _ in range(7):
+        scene += (
+            f'<div class="ray" style="left:{random.randint(5, 90)}%;'
+            f'width:{random.randint(6, 14)}vw;'
+            f'transform:rotate({random.randint(10, 24)}deg);'
+            f'animation-delay:-{random.randint(0, 8)}s;'
+            f'animation-duration:{random.randint(7, 12)}s;"></div>'
+        )
+    scene += '<div class="fog f3"></div>'
+    for _ in range(30):
+        scene += (
+            f'<div class="firefly" style="left:{random.randint(2, 98)}%;'
+            f'top:{random.randint(40, 92)}%;'
+            f'animation-delay:{round(random.uniform(0, 6), 2)}s;'
+            f'animation-duration:{round(random.uniform(4, 8), 2)}s;"></div>'
+        )
+    for _ in range(220):
+        scene += (
+            f'<div class="drop" style="left:{random.randint(0, 100)}%;'
+            f'animation-delay:{round(random.uniform(0, 2), 2)}s;'
+            f'animation-duration:{round(random.uniform(0.5, 1.0), 2)}s;"></div>'
+        )
+    scene += '<div class="vignette"></div>'
+    return css, f'<div class="fx">{scene}</div>'
 
 
 FOREST_CSS = """
-<style>
-.stApp { background: linear-gradient(to bottom, #020a06 0%, #06180e 45%, #0d3320 100%); }
-.tree {
-  position: absolute; bottom: -10px;
-  clip-path: polygon(50% 0%, 68% 28%, 58% 28%, 78% 55%, 64% 55%, 90% 85%,
-                     54% 85%, 54% 100%, 46% 100%, 46% 85%, 10% 85%, 36% 55%,
-                     22% 55%, 42% 28%, 32% 28%);
+.stApp { background:
+  radial-gradient(ellipse at 50% 15%, #6fae85 0%, #357a58 22%, #12402b 50%, #04140d 100%); }
+.fx { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; overflow: hidden; z-index: 0; }
+.pine {
+  position: absolute; bottom: -4vh;
+  background: linear-gradient(100deg, rgba(0,0,0,0.65) 0%, var(--c) 45%, rgba(255,255,220,0.35) 100%);
+  clip-path: polygon(50% 0%, 66% 22%, 58% 22%, 76% 46%, 64% 46%, 88% 76%,
+                     54% 76%, 54% 100%, 46% 100%, 46% 76%, 12% 76%, 36% 46%,
+                     24% 46%, 42% 22%, 34% 22%);
 }
-.mist {
-  position: absolute; bottom: 0; left: 0; width: 200%; height: 38%;
-  background: linear-gradient(to top, rgba(180, 225, 200, 0.22), rgba(180, 225, 200, 0));
-  animation: mistmove 40s linear infinite alternate;
-}
-@keyframes mistmove { from { transform: translateX(-25%); } to { transform: translateX(0); } }
-.firefly {
-  position: absolute; width: 5px; height: 5px; border-radius: 50%;
-  background: #d9ff7a; box-shadow: 0 0 10px 3px rgba(217, 255, 122, 0.8);
-  animation: fly ease-in-out infinite;
-}
+.trunk { position: absolute; bottom: -5vh; height: 125vh; border-radius: 6px 6px 0 0; }
+.t1 { background: linear-gradient(90deg, #050302 0%, #2e2015 35%, #4d3825 58%, #120b06 100%); }
+.t2 { background: linear-gradient(90deg, #040302 0%, #25201a 35%, #3f352a 58%, #0d0906 100%); }
+.t3 { background: linear-gradient(90deg, #030402 0%, #1d2a1a 35%, #36482c 58%, #0a1008 100%); }
+.fog { position: absolute; left: 0; width: 220%; }
+.f1 { bottom: 12%; height: 30%; animation: fogmove 55s linear infinite alternate;
+      background: linear-gradient(to top, rgba(190,230,210,0) 0%, rgba(190,230,210,0.20) 50%, rgba(190,230,210,0) 100%); }
+.f2 { bottom: 0; height: 34%; animation: fogmove 42s linear infinite alternate-reverse;
+      background: linear-gradient(to top, rgba(200,235,215,0.26), rgba(200,235,215,0)); }
+.f3 { bottom: 0; height: 22%; animation: fogmove 32s linear infinite alternate;
+      background: linear-gradient(to top, rgba(210,240,225,0.22), rgba(210,240,225,0)); }
+@keyframes fogmove { from { transform: translateX(-45%); } to { transform: translateX(0); } }
+.canopy { position: absolute; top: 0; left: 0; width: 100%; height: 42%;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(2,18,9,0.97) 0%, rgba(2,18,9,0) 62%),
+    radial-gradient(ellipse at 52% -10%, rgba(2,18,9,0.80) 0%, rgba(2,18,9,0) 55%),
+    radial-gradient(ellipse at 90% 0%, rgba(2,18,9,0.97) 0%, rgba(2,18,9,0) 62%),
+    linear-gradient(to bottom, rgba(2,14,8,0.85), rgba(2,14,8,0)); }
+.ray { position: absolute; top: -12%; height: 135%; transform-origin: top center;
+  background: linear-gradient(to bottom, rgba(255,246,196,0.38), rgba(255,246,196,0));
+  filter: blur(16px); animation: raypulse ease-in-out infinite alternate; }
+@keyframes raypulse { from { opacity: 0.25; } to { opacity: 0.85; } }
+.firefly { position: absolute; width: 5px; height: 5px; border-radius: 50%;
+  background: #d9ff7a; box-shadow: 0 0 10px 3px rgba(217,255,122,0.8);
+  animation: fly ease-in-out infinite; }
 @keyframes fly {
   0%, 100% { opacity: 0.1; transform: translate(0, 0); }
   50%      { opacity: 1;   transform: translate(25px, -30px); }
 }
-.glass { background: rgba(0, 25, 12, 0.38) !important; }
-</style>
+.drop { position: absolute; top: -80px; width: 2px; height: 60px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(200,225,255,0.75));
+  animation: fall linear infinite; }
+@keyframes fall { to { transform: translateY(115vh); } }
+.vignette { position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,0.7) 100%); }
+.glass { background: rgba(0, 25, 12, 0.42) !important; }
 """
 
 
 def apply_theme(theme):
-    st.markdown(BASE_CSS + FOREST_CSS + forest_scene(), unsafe_allow_html=True)
+    layer_css, scene_html = forest_scene()
+    st.markdown(
+        BASE_CSS + "<style>" + FOREST_CSS + layer_css + "</style>" + scene_html,
+        unsafe_allow_html=True,
+    )
 
 
 def show_stats(items):
@@ -344,6 +409,7 @@ NEWS_TOPICS = {
 
 
 # ---------- Page ----------
+apply_theme("forest")
 st.markdown('<div class="title">🌦️ Weather Dashboard</div>', unsafe_allow_html=True)
 
 left, right = st.columns([4, 1])
@@ -356,7 +422,6 @@ unit = right.segmented_control(
 
 place = get_location(city)
 if place is None:
-    apply_theme("forest")
     st.error("City not found. Check the spelling.")
     st.stop()
 
@@ -369,7 +434,6 @@ daily = weather["daily"]
 is_day = now["is_day"] == 1
 code = now["weather_code"]
 desc, emoji = describe(code, is_day)
-apply_theme("forest")
 
 try:
     start = hourly["time"].index(now["time"][:13] + ":00")
