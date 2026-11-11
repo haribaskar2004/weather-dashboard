@@ -6,7 +6,6 @@ import streamlit as st
 
 st.set_page_config(page_title="Weather Dashboard", page_icon="🌦️", layout="wide")
 
-# ---------- Weather code -> (description, emoji) ----------
 WEATHER_CODES = {
     0: ("Clear sky", "☀️"), 1: ("Mainly clear", "🌤️"), 2: ("Partly cloudy", "⛅"),
     3: ("Overcast", "☁️"), 45: ("Foggy", "🌫️"), 48: ("Foggy", "🌫️"),
@@ -54,7 +53,6 @@ def get_theme(code, is_day):
     return "clear" if is_day else "night"
 
 
-# ---------- Helper functions for the extra information ----------
 def compass(degrees):
     names = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     return names[round(degrees / 45) % 8]
@@ -109,7 +107,6 @@ def convert(temp_c, unit):
     return round(temp_c)
 
 
-# ---------- Styling ----------
 BASE_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
@@ -176,15 +173,16 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
          opacity: 0; animation: flash 7s infinite; }
 @keyframes flash { 0%,90%,100% { opacity: 0; } 91% { opacity: 0.55; } 92% { opacity: 0; }
                    94% { opacity: 0.8; } 96% { opacity: 0; } }
-/* ---------- Search box ---------- */
+
+/* ---------- Search box (purple) ---------- */
 [data-baseweb="input"], [data-baseweb="base-input"] {
   background: transparent !important;
   border: none !important;
 }
 [data-testid="stTextInput"] input {
-  background: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(124, 58, 237, 0.45) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border: 2px solid #c4b5fd !important;
   border-radius: 50px !important;
   padding: 14px 24px !important;
   font-size: 1.05rem !important;
@@ -192,19 +190,19 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
   -webkit-backdrop-filter: blur(14px);
   transition: all 0.35s ease;
 }
-[data-testid="stTextInput"] input::placeholder { color: rgba(255, 255, 255, 0.65); }
+[data-testid="stTextInput"] input::placeholder { color: rgba(255, 255, 255, 0.75); }
 [data-testid="stTextInput"] input:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(124, 58, 237, 0.6) !important;
 }
 [data-testid="stTextInput"] input:focus {
   border-color: #ffffff !important;
   transform: scale(1.02);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.18), 0 0 28px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.35), 0 0 28px rgba(167, 139, 250, 0.7);
   animation: glow 2s ease-in-out infinite;
 }
 @keyframes glow {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(255,255,255,0.15), 0 0 18px rgba(255,255,255,0.25); }
-  50%      { box-shadow: 0 0 0 6px rgba(255,255,255,0.25), 0 0 34px rgba(255,255,255,0.45); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(196,181,253,0.3), 0 0 18px rgba(167,139,250,0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(196,181,253,0.45), 0 0 34px rgba(167,139,250,0.8); }
 }
 
 /* ---------- C / F toggle ---------- */
@@ -291,7 +289,6 @@ def show_stats(items):
         )
 
 
-# ---------- Data ----------
 def get_location(city):
     url = "https://geocoding-api.open-meteo.com/v1/search"
     try:
@@ -331,7 +328,7 @@ def get_air_quality(lat, lon):
     try:
         return requests.get(url, params=params, timeout=10).json().get("current")
     except Exception:
-        return None  # air quality is optional, so the app keeps working without it
+        return None
 
 
 # ---------- Page ----------
@@ -344,6 +341,7 @@ city = left.text_input(
 unit = right.segmented_control(
     "Unit", ["°C", "°F"], default="°C", label_visibility="collapsed"
 ) or "°C"
+
 place = get_location(city)
 if place is None:
     apply_theme("cloudy")
@@ -361,7 +359,6 @@ code = now["weather_code"]
 desc, emoji = describe(code, is_day)
 apply_theme(get_theme(code, is_day))
 
-# Find the current hour in the hourly list
 try:
     start = hourly["time"].index(now["time"][:13] + ":00")
 except ValueError:
@@ -371,7 +368,6 @@ rain_chance = daily["precipitation_probability_max"][0] or 0
 uv = daily["uv_index_max"][0] or 0
 local_time = datetime.strptime(now["time"], "%Y-%m-%dT%H:%M").strftime("%A, %d %B %Y, %I:%M %p")
 
-# Big main card
 st.markdown(
     f'<div class="glass hero">'
     f'<div class="city">📍 {place["name"]}, {place.get("country", "")}</div>'
@@ -382,11 +378,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Smart tip
 tip = get_tip(code, now["temperature_2m"], uv, rain_chance)
 st.markdown(f'<div class="glass tip">💡 {tip}</div>', unsafe_allow_html=True)
 
-# Info cards, row 1
 show_stats([
     ("🌡️ Feels like", f'{convert(now["apparent_temperature"], unit)}{unit}', "How it feels outside"),
     ("💧 Humidity", f'{now["relative_humidity_2m"]}%', "Moisture in the air"),
@@ -394,7 +388,6 @@ show_stats([
     ("🌧️ Rain chance", f"{rain_chance}%", "Today"),
 ])
 
-# Info cards, row 2
 visibility_km = round(hourly["visibility"][start] / 1000, 1)
 show_stats([
     ("🧭 Pressure", f'{round(now["surface_pressure"])} hPa', "Air pressure"),
@@ -403,7 +396,6 @@ show_stats([
     ("🕶️ UV index", f"{round(uv, 1)}", uv_level(uv)),
 ])
 
-# Info cards, row 3
 sunrise = daily["sunrise"][0].split("T")[1]
 sunset = daily["sunset"][0].split("T")[1]
 hours, minutes = divmod(int(daily["daylight_duration"][0] // 60), 60)
@@ -418,7 +410,6 @@ show_stats([
     ("🌫️ Air quality", aqi_value, aqi_sub),
 ])
 
-# Hourly forecast and chart
 st.markdown('<div class="section">⏰ Next 24 Hours</div>', unsafe_allow_html=True)
 end = min(start + 24, len(hourly["time"]))
 cards = ""
@@ -432,7 +423,6 @@ for i in range(start, end):
               f'<div class="rain">💧 {prob}%</div></div>')
 st.markdown(f'<div class="hourly">{cards}</div>', unsafe_allow_html=True)
 
-# 7-day forecast
 st.markdown('<div class="section">📅 7-Day Forecast</div>', unsafe_allow_html=True)
 for i, col in enumerate(st.columns(7)):
     day_name = "Today" if i == 0 else datetime.strptime(daily["time"][i], "%Y-%m-%d").strftime("%a")
@@ -445,7 +435,6 @@ for i, col in enumerate(st.columns(7)):
         unsafe_allow_html=True,
     )
 
-# Charts
 st.markdown('<div class="section">📈 Temperature Trends</div>', unsafe_allow_html=True)
 tab1, tab2 = st.tabs(["Next 24 hours", "7 days"])
 with tab1:
