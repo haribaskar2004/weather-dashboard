@@ -1,7 +1,9 @@
+import base64
 import html
 import random
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import quote
 
 import requests
@@ -227,156 +229,7 @@ button[data-baseweb="tab"] p { color: #ffffff; font-weight: 600; }
 </style>
 """
 
-# ---------- 3D deep forest ----------
-FOREST_LAYERS = [
-    dict(kind="pine", n=30, h=(34, 50), color="#5b9a7e", blur=3.0, op=0.55, amp=0.4, dur=24),
-    dict(kind="pine", n=24, h=(44, 62), color="#357a5a", blur=2.0, op=0.70, amp=0.8, dur=20),
-    dict(kind="pine", n=18, h=(58, 80), color="#1b5236", blur=1.0, op=0.88, amp=1.4, dur=17),
-    dict(kind="trunk", n=8, w=(2.0, 3.4), blur=1.5, op=0.95, amp=2.2, dur=14),
-    dict(kind="trunk", n=5, w=(4.0, 6.5), blur=5.0, op=1.00, amp=3.6, dur=12),
-]
-
-
-def forest_scene():
-    random.seed(21)
-    css = ""
-    scene = ""
-
-    for i, L in enumerate(FOREST_LAYERS):
-        css += (
-            f"@keyframes sway{i}{{from{{transform:translateX(-{L['amp']}vw)}}"
-            f"to{{transform:translateX({L['amp']}vw)}}}}"
-            f".L{i}{{position:absolute;left:-6%;width:112%;top:0;height:100%;"
-            f"filter:blur({L['blur']}px);opacity:{L['op']};"
-            f"animation:sway{i} {L['dur']}s ease-in-out infinite alternate;}}"
-        )
-        trees = ""
-        for _ in range(L["n"]):
-            left = random.uniform(-2, 100)
-            if L["kind"] == "pine":
-                h = round(random.uniform(*L["h"]), 1)
-                w = round(h * random.uniform(0.40, 0.52), 1)
-                trees += (
-                    f'<div class="pine" style="left:{left:.1f}%;width:{w}vh;height:{h}vh;'
-                    f'--c:{L["color"]};"></div>'
-                )
-            else:
-                w = round(random.uniform(*L["w"]), 1)
-                tone = random.choice(["t1", "t2", "t3"])
-                trees += f'<div class="trunk {tone}" style="left:{left:.1f}%;width:{w}vh;"></div>'
-        scene += f'<div class="L{i}">{trees}</div>'
-        if i == 1:
-            scene += '<div class="fog f1"></div>'
-        if i == 2:
-            scene += '<div class="fog f2"></div>'
-
-    scene += '<div class="canopy"></div>'
-    for _ in range(7):
-        scene += (
-            f'<div class="ray" style="left:{random.randint(5, 90)}%;'
-            f'width:{random.randint(6, 14)}vw;'
-            f'transform:rotate({random.randint(10, 24)}deg);'
-            f'animation-delay:-{random.randint(0, 8)}s;'
-            f'animation-duration:{random.randint(7, 12)}s;"></div>'
-        )
-    scene += '<div class="fog f3"></div>'
-    for _ in range(30):
-        scene += (
-            f'<div class="firefly" style="left:{random.randint(2, 98)}%;'
-            f'top:{random.randint(40, 92)}%;'
-            f'animation-delay:{round(random.uniform(0, 6), 2)}s;'
-            f'animation-duration:{round(random.uniform(4, 8), 2)}s;"></div>'
-        )
-    for _ in range(220):
-        scene += (
-            f'<div class="drop" style="left:{random.randint(0, 100)}%;'
-            f'animation-delay:{round(random.uniform(0, 2), 2)}s;'
-            f'animation-duration:{round(random.uniform(0.5, 1.0), 2)}s;"></div>'
-        )
-    scene += '<div class="vignette"></div>'
-    return css, f'<div class="fx">{scene}</div>'
-
-
-FOREST_CSS = """
-.stApp { background:
-  radial-gradient(ellipse at 50% 15%, #6fae85 0%, #357a58 22%, #12402b 50%, #04140d 100%); }
-.fx { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none; overflow: hidden; z-index: 0; }
-.pine {
-  position: absolute; bottom: -4vh;
-  background: linear-gradient(100deg, rgba(0,0,0,0.65) 0%, var(--c) 45%, rgba(255,255,220,0.35) 100%);
-  clip-path: polygon(50% 0%, 66% 22%, 58% 22%, 76% 46%, 64% 46%, 88% 76%,
-                     54% 76%, 54% 100%, 46% 100%, 46% 76%, 12% 76%, 36% 46%,
-                     24% 46%, 42% 22%, 34% 22%);
-}
-.trunk { position: absolute; bottom: -5vh; height: 125vh; border-radius: 6px 6px 0 0; }
-.t1 { background: linear-gradient(90deg, #050302 0%, #2e2015 35%, #4d3825 58%, #120b06 100%); }
-.t2 { background: linear-gradient(90deg, #040302 0%, #25201a 35%, #3f352a 58%, #0d0906 100%); }
-.t3 { background: linear-gradient(90deg, #030402 0%, #1d2a1a 35%, #36482c 58%, #0a1008 100%); }
-.fog { position: absolute; left: 0; width: 220%; }
-.f1 { bottom: 12%; height: 30%; animation: fogmove 55s linear infinite alternate;
-      background: linear-gradient(to top, rgba(190,230,210,0) 0%, rgba(190,230,210,0.20) 50%, rgba(190,230,210,0) 100%); }
-.f2 { bottom: 0; height: 34%; animation: fogmove 42s linear infinite alternate-reverse;
-      background: linear-gradient(to top, rgba(200,235,215,0.26), rgba(200,235,215,0)); }
-.f3 { bottom: 0; height: 22%; animation: fogmove 32s linear infinite alternate;
-      background: linear-gradient(to top, rgba(210,240,225,0.22), rgba(210,240,225,0)); }
-@keyframes fogmove { from { transform: translateX(-45%); } to { transform: translateX(0); } }
-.canopy { position: absolute; top: 0; left: 0; width: 100%; height: 42%;
-  background:
-    radial-gradient(ellipse at 12% 0%, rgba(2,18,9,0.97) 0%, rgba(2,18,9,0) 62%),
-    radial-gradient(ellipse at 52% -10%, rgba(2,18,9,0.80) 0%, rgba(2,18,9,0) 55%),
-    radial-gradient(ellipse at 90% 0%, rgba(2,18,9,0.97) 0%, rgba(2,18,9,0) 62%),
-    linear-gradient(to bottom, rgba(2,14,8,0.85), rgba(2,14,8,0)); }
-.ray { position: absolute; top: -12%; height: 135%; transform-origin: top center;
-  background: linear-gradient(to bottom, rgba(255,246,196,0.38), rgba(255,246,196,0));
-  filter: blur(16px); animation: raypulse ease-in-out infinite alternate; }
-@keyframes raypulse { from { opacity: 0.25; } to { opacity: 0.85; } }
-.firefly { position: absolute; width: 5px; height: 5px; border-radius: 50%;
-  background: #d9ff7a; box-shadow: 0 0 10px 3px rgba(217,255,122,0.8);
-  animation: fly ease-in-out infinite; }
-@keyframes fly {
-  0%, 100% { opacity: 0.1; transform: translate(0, 0); }
-  50%      { opacity: 1;   transform: translate(25px, -30px); }
-}
-.drop { position: absolute; top: -80px; width: 2px; height: 60px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(200,225,255,0.75));
-  animation: fall linear infinite; }
-@keyframes fall { to { transform: translateY(115vh); } }
-.vignette { position: absolute; inset: 0;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,0.7) 100%); }
-.glass { background: rgba(0, 25, 12, 0.42) !important; }
-"""
-
-
-def apply_theme(theme):
-    layer_css, scene_html = forest_scene()
-    st.markdown(
-        BASE_CSS + "<style>" + FOREST_CSS + layer_css + "</style>" + scene_html,
-        unsafe_allow_html=True,
-    )
-
-
-import base64
-from pathlib import Path
-
-
-@st.cache_data
-def load_background():
-    folder = Path(__file__).parent
-    options = [
-        ("forest.mp4", "video/mp4"),
-        ("forest.jpg", "image/jpeg"),
-        ("forest.jpeg", "image/jpeg"),
-        ("forest.png", "image/png"),
-        ("forest.webp", "image/webp"),
-    ]
-    for name, mime in options:
-        path = folder / name
-        if path.exists():
-            return mime, base64.b64encode(path.read_bytes()).decode()
-    return None, None
-
-
+# ---------- Realistic photo / video background ----------
 REAL_CSS = """
 .stApp { background: #06100b; }
 .bgwrap { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
@@ -403,6 +256,23 @@ img.bg, div.bg { animation: slowzoom 45s ease-in-out infinite alternate; }
 """
 
 
+@st.cache_data
+def load_background():
+    folder = Path(__file__).parent
+    options = [
+        ("forest.mp4", "video/mp4"),
+        ("forest.jpg", "image/jpeg"),
+        ("forest.jpeg", "image/jpeg"),
+        ("forest.png", "image/png"),
+        ("forest.webp", "image/webp"),
+    ]
+    for name, mime in options:
+        path = folder / name
+        if path.exists():
+            return mime, base64.b64encode(path.read_bytes()).decode()
+    return None, None
+
+
 def apply_theme(theme):
     random.seed(5)
     mime, data = load_background()
@@ -413,7 +283,8 @@ def apply_theme(theme):
         media = (f'<video class="bg" autoplay muted loop playsinline '
                  f'src="data:video/mp4;base64,{data}"></video>')
     else:
-        media = f'<div class="bg" style="background:url(data:{mime};base64,{data}) center/cover no-repeat;"></div>'
+        media = (f'<div class="bg" style="background:url(data:{mime};base64,{data}) '
+                 f'center/cover no-repeat;"></div>')
 
     drops = ""
     for _ in range(170):
@@ -427,6 +298,8 @@ def apply_theme(theme):
     scene = (f'<div class="bgwrap">{media}<div class="shade"></div>'
              f'<div class="mist"></div>{drops}<div class="vignette"></div></div>')
     st.markdown(BASE_CSS + "<style>" + REAL_CSS + "</style>" + scene, unsafe_allow_html=True)
+
+
 def show_stats(items):
     for col, (label, value, sub) in zip(st.columns(len(items)), items):
         col.markdown(
